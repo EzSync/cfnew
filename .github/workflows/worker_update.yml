@@ -1,0 +1,42 @@
+name: Sync _worker.js with 少年你相信光吗
+
+on:
+  push:
+    paths:
+      - "少年你相信光吗"   # Trigger only when this file changes
+  workflow_dispatch:        # Allow manual run
+
+jobs:
+  sync_worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure _worker.js exists and sync content
+        run: |
+          SRC_FILE="少年你相信光吗"
+          DEST_FILE="_worker.js"
+
+          # Ensure destination file exists
+          if [ ! -f "$DEST_FILE" ]; then
+            echo "Creating $DEST_FILE since it does not exist."
+            touch "$DEST_FILE"
+          fi
+
+          # Replace its content with source file
+          cp "$SRC_FILE" "$DEST_FILE"
+
+      - name: Commit and push if changes detected
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add _worker.js
+            git commit -m "Sync _worker.js with updated '少年你相信光吗'"
+            git push
+          fi

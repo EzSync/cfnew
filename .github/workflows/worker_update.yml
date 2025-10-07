@@ -1,4 +1,4 @@
-name: Sync Fork with Upstream & Update Worker.js
+name: Sync Fork with Upstream & Update Worker
 
 on:
   schedule:

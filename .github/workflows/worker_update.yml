@@ -1,19 +1,19 @@
-      - name: Sync _worker.js with 少年你相信光吗
-        run: |
-          SRC_FILE="少年你相信光吗"
-          DEST_FILE="_worker.js"
+- name: Sync _worker.js with 少年你相信光吗
+  run:
+    SRC_FILE="少年你相信光吗"
+      DEST_FILE="_worker.js"
 
-          if [ -f "$SRC_FILE" ]; then
-            cp "$SRC_FILE" "$DEST_FILE"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add _worker.js
-            if ! git diff --cached --quiet; then
-              git commit -m "Auto-sync _worker.js after upstream update"
-              git push
-            else
-              echo "No change detected in _worker.js"
-            fi
-          else
-            echo "Source file not found: $SRC_FILE"
-          fi
+      if [ -f "$SRC_FILE" ]; then
+        cp "$SRC_FILE" "$DEST_FILE"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add _worker.js
+        if ! git diff --cached --quiet; then
+          git commit -m "Auto-sync _worker.js after upstream update"
+          git push
+        else
+          echo "No change detected in _worker.js"
+        fi
+      else
+        echo "Source file not found: $SRC_FILE"
+      fi

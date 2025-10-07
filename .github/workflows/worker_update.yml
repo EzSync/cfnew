@@ -1,19 +1,63 @@
-- name: Sync _worker.js with 少年你相信光吗
-  run:
-    SRC_FILE="少年你相信光吗"
-      DEST_FILE="_worker.js"
+name: Sync Fork with Upstream 2
 
-      if [ -f "$SRC_FILE" ]; then
-        cp "$SRC_FILE" "$DEST_FILE"
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add _worker.js
-        if ! git diff --cached --quiet; then
-          git commit -m "Auto-sync _worker.js after upstream update"
-          git push
-        else
-          echo "No change detected in _worker.js"
-        fi
-      else
-        echo "Source file not found: $SRC_FILE"
-      fi
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # Runs every 6 hours
+  workflow_dispatch:        # Allows manual trigger from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/byJoey/cfnew.git
+          git fetch upstream
+
+      - name: Merge upstream changes
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit || echo "No changes to merge"
+
+      - name: Replace _worker.js with 少年你相信光吗
+        run: |
+          SRC_FILE="少年你相信光吗"
+          DEST_FILE="_worker.js"
+
+          if [ -f "$SRC_FILE" ]; then
+            echo "Updating $DEST_FILE with content from $SRC_FILE"
+            cp "$SRC_FILE" "$DEST_FILE"
+          else
+            echo "Warning: Source file '$SRC_FILE' not found. Skipping replacement."
+          fi
+
+      - name: Commit and push updated _worker.js (if changed)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add _worker.js || true
+
+          if git diff --cached --quiet; then
+            echo "No changes in _worker.js to commit."
+          else
+            git commit -m "Auto-sync: update _worker.js from '少年你相信光吗'"
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/EzSync/cfnew.git main
+          fi
+
+      - name: Push merged upstream changes
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/EzSync/cfnew.git main

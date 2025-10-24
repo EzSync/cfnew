@@ -328,7 +328,7 @@ export default {
 				}
 			}
 
-			socks5Config = env.s || env.S || socks5Config;
+			socks5Config = getConfigValue('s', env.s || env.S) || socks5Config;
 			if (socks5Config) {
 				try {
 					parsedSocks5Config = parseSocksConfig(socks5Config);
@@ -402,6 +402,15 @@ export default {
 
 			// 优先使用KV配置，然后使用环境变量，如果都没有则使用默认URL
 			preferredIPsURL = getConfigValue('yxURL', env.yxURL || env.YXURL) || 'https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/kejilandbestip.txt';
+			
+			// 如果yxURL不是默认值，清空内置优选IP和域名
+			const defaultURL = 'https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/kejilandbestip.txt';
+			if (preferredIPsURL !== defaultURL) {
+				backupIPs = [];
+				directDomains.length = 0;
+				customPreferredIPs = [];
+				customPreferredDomains = [];
+			}
 
 			const url = new URL(request.url);
 
@@ -891,45 +900,46 @@ async function handleSubscriptionRequest(request, user, url = null) {
         const domainList = directDomains.map(d => ({ ip: d.domain, isp: d.name || d.domain }));
         finalLinks.push(...generateLinksFromSource(domainList, user, workerDomain));
 
-        try {
-            const dynamicIPList = await fetchDynamicIPs();
-            if (dynamicIPList.length > 0) {
-                finalLinks.push(...generateLinksFromSource(dynamicIPList, user, workerDomain));
-            }
-        } catch (error) {
-            
-            if (!currentWorkerRegion) {
-                currentWorkerRegion = await detectWorkerRegion(request);
-            }
-            
-            const bestBackupIP = await getBestBackupIP(currentWorkerRegion);
-            if (bestBackupIP) {
-                fallbackAddress = bestBackupIP.domain;
-                fallbackPort = bestBackupIP.port.toString();
+        const defaultURL = 'https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/kejilandbestip.txt';
+        if (preferredIPsURL === defaultURL) {
+            try {
+                const dynamicIPList = await fetchDynamicIPs();
+                if (dynamicIPList.length > 0) {
+                    finalLinks.push(...generateLinksFromSource(dynamicIPList, user, workerDomain));
+                }
+            } catch (error) {
+                if (!currentWorkerRegion) {
+                    currentWorkerRegion = await detectWorkerRegion(request);
+                }
                 
-                const backupList = [{ ip: fallbackAddress, isp: 'ProxyIP-' + currentWorkerRegion }];
-                finalLinks.push(...generateLinksFromSource(backupList, user, workerDomain));
+                const bestBackupIP = await getBestBackupIP(currentWorkerRegion);
+                if (bestBackupIP) {
+                    fallbackAddress = bestBackupIP.domain;
+                    fallbackPort = bestBackupIP.port.toString();
+                    
+                    const backupList = [{ ip: fallbackAddress, isp: 'ProxyIP-' + currentWorkerRegion }];
+                    finalLinks.push(...generateLinksFromSource(backupList, user, workerDomain));
+                }
             }
-        }
 
-        try {
-            const newIPList = await fetchAndParseNewIPs();
-            if (newIPList.length > 0) {
-                finalLinks.push(...generateLinksFromNewIPs(newIPList, user, workerDomain));
-            }
-        } catch (error) {
-            
-            if (!currentWorkerRegion) {
-                currentWorkerRegion = await detectWorkerRegion(request);
-            }
-            
-            const bestBackupIP = await getBestBackupIP(currentWorkerRegion);
-            if (bestBackupIP) {
-                fallbackAddress = bestBackupIP.domain;
-                fallbackPort = bestBackupIP.port.toString();
+            try {
+                const newIPList = await fetchAndParseNewIPs();
+                if (newIPList.length > 0) {
+                    finalLinks.push(...generateLinksFromNewIPs(newIPList, user, workerDomain));
+                }
+            } catch (error) {
+                if (!currentWorkerRegion) {
+                    currentWorkerRegion = await detectWorkerRegion(request);
+                }
                 
-                const backupList = [{ ip: fallbackAddress, isp: 'ProxyIP-' + currentWorkerRegion }];
-                finalLinks.push(...generateLinksFromSource(backupList, user, workerDomain));
+                const bestBackupIP = await getBestBackupIP(currentWorkerRegion);
+                if (bestBackupIP) {
+                    fallbackAddress = bestBackupIP.domain;
+                    fallbackPort = bestBackupIP.port.toString();
+                    
+                    const backupList = [{ ip: fallbackAddress, isp: 'ProxyIP-' + currentWorkerRegion }];
+                    finalLinks.push(...generateLinksFromSource(backupList, user, workerDomain));
+                }
             }
         }
     }
@@ -2341,6 +2351,68 @@ async function handleConfigAPI(request) {
             } else {
                 fallbackAddress = '';
                 fallbackPort = '443';
+            }
+            
+            socks5Config = getConfigValue('s', '') || '';
+            if (socks5Config) {
+                try {
+                    parsedSocks5Config = parseSocksConfig(socks5Config);
+                    isSocksEnabled = true;
+                } catch (err) {
+                    isSocksEnabled = false;
+                }
+            } else {
+                isSocksEnabled = false;
+            }
+            
+            const newPreferredIPsURL = getConfigValue('yxURL', '') || 'https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/kejilandbestip.txt';
+            const defaultURL = 'https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/kejilandbestip.txt';
+            if (newPreferredIPsURL !== defaultURL) {
+                backupIPs = [];
+                directDomains.length = 0;
+                customPreferredIPs = [];
+                customPreferredDomains = [];
+            } else {
+                backupIPs = [
+                    { domain: 'ProxyIP.US.CMLiussss.net', region: 'US', regionCode: 'US', port: 443 },
+                    { domain: 'ProxyIP.SG.CMLiussss.net', region: 'SG', regionCode: 'SG', port: 443 },
+                    { domain: 'ProxyIP.JP.CMLiussss.net', region: 'JP', regionCode: 'JP', port: 443 },
+                    { domain: 'ProxyIP.HK.CMLiussss.net', region: 'HK', regionCode: 'HK', port: 443 },
+                    { domain: 'ProxyIP.KR.CMLiussss.net', region: 'KR', regionCode: 'KR', port: 443 },
+                    { domain: 'ProxyIP.DE.CMLiussss.net', region: 'DE', regionCode: 'DE', port: 443 },
+                    { domain: 'ProxyIP.SE.CMLiussss.net', region: 'SE', regionCode: 'SE', port: 443 },
+                    { domain: 'ProxyIP.NL.CMLiussss.net', region: 'NL', regionCode: 'NL', port: 443 },
+                    { domain: 'ProxyIP.FI.CMLiussss.net', region: 'FI', regionCode: 'FI', port: 443 },
+                    { domain: 'ProxyIP.GB.CMLiussss.net', region: 'GB', regionCode: 'GB', port: 443 },
+                    { domain: 'ProxyIP.Oracle.cmliussss.net', region: 'Oracle', regionCode: 'Oracle', port: 443 },
+                    { domain: 'ProxyIP.DigitalOcean.CMLiussss.net', region: 'DigitalOcean', regionCode: 'DigitalOcean', port: 443 },
+                    { domain: 'ProxyIP.Vultr.CMLiussss.net', region: 'Vultr', regionCode: 'Vultr', port: 443 },
+                    { domain: 'ProxyIP.Multacom.CMLiussss.net', region: 'Multacom', regionCode: 'Multacom', port: 443 }
+                ];
+                directDomains.length = 0;
+                directDomains.push(
+                    { name: "cloudflare.182682.xyz", domain: "cloudflare.182682.xyz" }, 
+                    { name: "speed.marisalnc.com", domain: "speed.marisalnc.com" },
+                    { domain: "freeyx.cloudflare88.eu.org" }, 
+                    { domain: "bestcf.top" }, 
+                    { domain: "cdn.2020111.xyz" }, 
+                    { domain: "cfip.cfcdn.vip" },
+                    { domain: "cf.0sm.com" }, 
+                    { domain: "cf.090227.xyz" }, 
+                    { domain: "cf.zhetengsha.eu.org" }, 
+                    { domain: "cloudflare.9jy.cc" },
+                    { domain: "cf.zerone-cdn.pp.ua" }, 
+                    { domain: "cfip.1323123.xyz" }, 
+                    { domain: "cnamefuckxxs.yuchen.icu" }, 
+                    { domain: "cloudflare-ip.mofashi.ltd" },
+                    { domain: "115155.xyz" }, 
+                    { domain: "cname.xirancdn.us" }, 
+                    { domain: "f3058171cad.002404.xyz" }, 
+                    { domain: "8.889288.xyz" },
+                    { domain: "cdn.tzpro.xyz" }, 
+                    { domain: "cf.877771.xyz" }, 
+                    { domain: "xn--b6gac.eu.org" }
+                );
             }
             
             return new Response(JSON.stringify({
